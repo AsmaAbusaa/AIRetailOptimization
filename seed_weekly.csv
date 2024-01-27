@@ -1,0 +1,2 @@
+,Date,ProductID,Month,Year,Week,Quantity_Lag_1,Quantity_Lag_2,Monthly_Sum,Monthly_Avg,min,max,Quantity
+0,2001-01-01,11111,1,2001,1,1,1,1,1,1,1,1
