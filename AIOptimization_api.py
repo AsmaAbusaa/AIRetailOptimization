@@ -14,6 +14,7 @@ filtered_items=None
 items_features=[]
 target=None
 item_models = {}
+processed_orders=False
 weekly_item_sales=pd.read_csv('seed_weekly.csv')
 weekly_item_sales.drop('Unnamed: 0',axis=1,inplace=True)
 df = pd.read_csv('file_out2.csv')
@@ -63,7 +64,7 @@ api.add_resource(UploadCSV, '/upload')
 
 @app.route('/processed', methods=['GET'])
 def preprocessing_file():
-    global processed_data,daily_orders_df,items_features,target
+    global processed_data,daily_orders_df,items_features,target,processed_orders
     if processed_data.notnull:
         #Daily orders processing data for the next day
         daily_orders_df=df.set_index('Date')
@@ -74,7 +75,7 @@ def preprocessing_file():
         daily_orders_df=daily_orders_df.set_index('Date')
         daily_orders_df=create_time_features(daily_orders_df)
         daily_orders_df=add_lags(daily_orders_df)
-  
+        processed_orders=True
         items_features=["Month", "Year", "Week", "Quantity_Lag_1", "Quantity_Lag_2", "Monthly_Sum", "Monthly_Avg", "min", "max"]
         target='Quantity'
         return jsonify({'message': 'File uploaded and processed successfully'})
@@ -106,16 +107,18 @@ def mine_association_rules():
 @app.route('/orders', methods=['GET'])
 def predict_orders():
     global daily_orders_df
-    model_path = 'orders_model.json'
+    
+    if not processed_orders:
+        return jsonify({'error': 'you must process dataset before'})
+    
     future=create_future_df(daily_orders_df)
-    #featuresD=["dayofweek","quarter","month","year","dayofyear","dayofmonth","Prev_Day_Orders","Prev_Week_Orders","Prev_Month_Orders","Rolling_Avg_Quantity","last_week_sum"]
     future_X=future.drop(['Orders_Count','isFuture'], axis=1)
    
-    print(f"Model file '{model_path}' does not exist. The model has not been saved yet.")
     model,X_test,y_test=build_orders_model(daily_orders_df)
     future['Orders_Count']=model.predict(future_X)
     X_test['Orders_Count']=model.predict(X_test)
     predicted_df=pd.concat([X_test,future])
+
     return plot_actual_vs_predicted(y_test.index,y_test,predicted_df.index,predicted_df['Orders_Count'],0,0)
 
 @app.route('/predict/<int:item_id>', methods=['GET'])
@@ -125,16 +128,18 @@ def predict_for_item(item_id):
     max=df['Date'].max()
     min=df['Date'].min()
 
+    item=df.loc[df['ProductID']==item_id]
+
+    item=rebuild_weekly_dataset_for_item(item,min,max)
+    item['Date']=item['Date'].dt.to_timestamp()
+    item=item.set_index('Date')
+    processed_item=engineer_weekly_item_sales_features_for_product(item)
+    processed_item=processed_item.set_index('Date')
+
     if item_id not in item_models:
-        item=df.loc[df['ProductID']==item_id]
-        item=rebuild_weekly_dataset_for_item(item,min,max)
-        item['Date']=item['Date'].dt.to_timestamp()
-        item=item.set_index('Date')
-        processed_item=engineer_weekly_item_sales_features_for_product(item)
-        processed_item=processed_item.set_index('Date')
         model = train_model_for_item(item_id,processed_item)
-    
-    model = item_models[item_id]
+    else :
+        model = item_models[item_id]
 
     X_train, X_test, y_train, y_test=split_data_for_item_predcition(processed_item,items_features,target)
     
