@@ -8,3 +8,10 @@ Additionally, our system employs advanced forecasting techniques to predict sale
 To assess the accuracy of our forecasts, we utilize appropriate performance measurements such as Root Mean Squared Error (RMSE) and Mean Absolute Error (MAE).
 
 By integrating data mining, machine learning, and performance evaluation, our project presents a comprehensive solution for optimizing product placement and sales forecasting in retail environments. This system holds promise for enhancing customer satisfaction, improving operational efficiency, and driving business growth in the retail sector.
+
+### Run project:
+1. Make sure you have Python installed on your system. You can download it from the official Python website.  https://www.python.org/downloads/
+2. install the dependencies using pip with the following command:
+   'pip install -r requirements.txt'
+   This will install only the dependencies listed in the requirements.txt file.
+3. then command'python AIOptimization_api.py'
